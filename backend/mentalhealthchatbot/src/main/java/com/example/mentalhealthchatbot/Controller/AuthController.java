@@ -3,6 +3,7 @@ package com.example.mentalhealthchatbot.Controller;
 import com.example.mentalhealthchatbot.config.AuthRequest;
 import com.example.mentalhealthchatbot.model.User;
 import com.example.mentalhealthchatbot.repository.UserRepository;
+import com.example.mentalhealthchatbot.Service.EmailService;
 import com.example.mentalhealthchatbot.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,58 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private EmailService emailService;
+
+    @PostMapping("/forgot-password")
+public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+    String email = request.get("email");
+    Optional<User> userOpt = userRepository.findByEmail(email);
+
+    // Always return success - don't reveal if email exists
+    if (userOpt.isEmpty()) {
+        return ResponseEntity.ok("If this email exists, a reset link has been sent.");
+    }
+
+    User user = userOpt.get();
+    String token = java.util.UUID.randomUUID().toString();
+    long expiry = System.currentTimeMillis() + 3600000; // 1 hour
+
+    user.setResetToken(token);
+    user.setResetTokenExpiry(String.valueOf(expiry));
+    userRepository.save(user);
+
+    emailService.sendPasswordResetEmail(email, token);
+
+    return ResponseEntity.ok("If this email exists, a reset link has been sent.");
+}
+
+@PostMapping("/reset-password")
+public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+    String token = request.get("token");
+    String newPassword = request.get("password");
+
+    Optional<User> userOpt = userRepository.findByResetToken(token);
+
+    if (userOpt.isEmpty()) {
+        return ResponseEntity.badRequest().body("Invalid or expired reset link.");
+    }
+
+    User user = userOpt.get();
+    long expiry = Long.parseLong(user.getResetTokenExpiry());
+
+    if (System.currentTimeMillis() > expiry) {
+        return ResponseEntity.badRequest().body("Reset link has expired.");
+    }
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    user.setResetToken(null);
+    user.setResetTokenExpiry(null);
+    userRepository.save(user);
+
+    return ResponseEntity.ok("Password reset successful.");
+}
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest request) {

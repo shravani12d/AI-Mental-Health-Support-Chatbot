@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./Auth.css";
 
-function Login() {
+function Login({ setToken }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -36,6 +36,8 @@ function Login() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("name", data.name);
       localStorage.setItem("email", data.email);
+      setToken(data.token);
+      navigate("/chat");
 
       navigate("/chat");
     } catch (err) {
@@ -113,6 +115,12 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               onKeyDown={handleKeyDown}
             />
+          </div>
+
+          <div style={{ textAlign: "right", marginBottom: "20px" }}>
+          <Link to="/forgot-password" style={{ fontSize: "13px", color: "#7a9e8a", textDecoration: "none" }}>
+           Forgot password?
+          </Link>
           </div>
 
           <button

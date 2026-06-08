@@ -3,33 +3,55 @@ package com.example.mentalhealthchatbot.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.example.mentalhealthchatbot.model.ChatMessage;
-import com.example.mentalhealthchatbot.repository.ChatRepository;
+import com.example.mentalhealthchatbot.model.ChatSession;
+import com.example.mentalhealthchatbot.repository.ChatSessionRepository;
 
-import java.time.LocalDateTime;
+import java.util.*;
 
 @Service
 public class ChatService {
 
     @Autowired
-    private GroqService groqService;
+    private GeminiService geminiService;
 
     @Autowired
-    private ChatRepository chatRepository;
+    private ChatSessionRepository chatSessionRepository;
 
-    public String generateReply(String message){
+    public String generateReply(String message, String sessionId, String email) {
 
-        // Get AI response from OpenAI
-        String reply = groqService.getAIResponse(message);
+        // Build history from session
+        List<Map<String, String>> history = new ArrayList<>();
 
-        // Save chat in MongoDB
-        ChatMessage chat = new ChatMessage();
-        chat.setUserMessage(message);
-        chat.setBotReply(reply);
-        chat.setTimestamp(LocalDateTime.now().toString());
+        if (sessionId != null && email != null) {
+            Optional<ChatSession> sessionOpt = chatSessionRepository
+                .findByIdAndUserEmail(sessionId, email);
 
-        chatRepository.save(chat);
+            if (sessionOpt.isPresent()) {
+                ChatSession session = sessionOpt.get();
 
-        return reply;
+                // Add last 10 message pairs to keep context
+                List<ChatSession.MessagePair> messages = session.getMessages();
+                int start = Math.max(0, messages.size() - 10);
+
+                for (int i = start; i < messages.size(); i++) {
+                    ChatSession.MessagePair pair = messages.get(i);
+
+                    // Add user message to history
+                    Map<String, String> userMsg = new HashMap<>();
+                    userMsg.put("role", "user");
+                    userMsg.put("content", pair.getUserMessage());
+                    history.add(userMsg);
+
+                    // Add bot reply to history
+                    Map<String, String> botMsg = new HashMap<>();
+                    botMsg.put("role", "assistant");
+                    botMsg.put("content", pair.getBotReply());
+                    history.add(botMsg);
+                }
+            }
+        }
+
+        // Pass history to Groq
+        return geminiService.getAIResponse(message, history);
     }
 }

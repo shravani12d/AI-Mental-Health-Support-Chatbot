@@ -4,26 +4,53 @@ import "./App.css";
 import ReactMarkdown from "react-markdown";
 import Login from "./Login";
 import Register from "./Register";
+import ForgotPassword from "./ForgotPassword";
+import ResetPassword from "./ResetPassword";
+
 
 function Chat() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   const chatEndRef = useRef(null);
 
   const name = localStorage.getItem("name") || "Friend";
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
+  // Load all sessions on startup
   useEffect(() => {
+    loadSessions();
+  }, []);
+
+  const loadSessions = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/api/sessions", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setSessions(data);
+
+      // If no sessions show welcome message
+      if (!data || data.length === 0) {
+        showWelcome();
+      }
+    } catch (err) {
+      showWelcome();
+    }
+  };
+
+  const showWelcome = () => {
     const fullText = `Hello ${name}! I'm Sera, your personal wellness companion 🌿 I'm here to listen and support you. How are you feeling today?`;
     let index = 0;
     let current = "";
 
     setIsTyping(true);
-
     const startTimer = setTimeout(() => {
       setIsTyping(false);
       setMessages([{ sender: "bot", text: "" }]);
@@ -32,17 +59,66 @@ function Chat() {
         current += fullText[index];
         index++;
         setMessages([{ sender: "bot", text: current }]);
-
-        if (index >= fullText.length) {
-          clearInterval(typingInterval);
-        }
+        if (index >= fullText.length) clearInterval(typingInterval);
       }, 7);
-
-      return () => clearInterval(typingInterval);
     }, 1000);
 
     return () => clearTimeout(startTimer);
-  }, []);
+  };
+
+  // Load a specific session when clicked
+  const loadSession = async (sessionId) => {
+    try {
+      const res = await fetch(`http://localhost:8080/api/sessions/${sessionId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      // Convert message pairs to flat messages array
+      const loadedMessages = [];
+      data.messages.forEach(pair => {
+        loadedMessages.push({ sender: "user", text: pair.userMessage });
+        loadedMessages.push({ sender: "bot", text: pair.botReply });
+      });
+
+      setMessages(loadedMessages);
+      setActiveSessionId(sessionId);
+    } catch (err) {
+      console.error("Error loading session", err);
+    }
+  };
+
+  // Start new chat
+  const newChat = () => {
+    setMessages([]);
+    setActiveSessionId(null);
+    showWelcome();
+  };
+
+  // Delete one session
+  const deleteSession = async (e, sessionId) => {
+    e.stopPropagation();
+    await fetch(`http://localhost:8080/api/sessions/${sessionId}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+
+    if (activeSessionId === sessionId) {
+      newChat();
+    }
+  };
+
+  // Delete all sessions
+  const deleteAllSessions = async () => {
+    await fetch("http://localhost:8080/api/sessions", {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    setSessions([]);
+    newChat();
+  };
 
   const sendMessage = async () => {
     if (message.trim() === "") return;
@@ -53,15 +129,35 @@ function Chat() {
     setIsTyping(true);
 
     try {
-      const response = await fetch("http://localhost:8080/api/chat", {
+      const url = activeSessionId
+        ? `http://localhost:8080/api/chat?sessionId=${activeSessionId}`
+        : "http://localhost:8080/api/chat";
+
+      const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "text/plain" },
+        headers: {
+          "Content-Type": "text/plain",
+          "Authorization": `Bearer ${token}`
+        },
         body: userMsg
       });
 
-      const data = await response.text();
+      const rawData = await response.text();
+
+      // Split reply and sessionId
+      const parts = rawData.split("|||");
+      const reply = parts[0];
+      const sessionId = parts[1];
+
       setIsTyping(false);
-      setMessages(prev => [...prev, { sender: "bot", text: data }]);
+      setMessages(prev => [...prev, { sender: "bot", text: reply }]);
+
+      // Update active session
+      if (sessionId) {
+        setActiveSessionId(sessionId);
+        loadSessions();
+      }
+
     } catch (error) {
       setIsTyping(false);
       setMessages(prev => [...prev, {
@@ -86,7 +182,43 @@ function Chat() {
   const moodOptions = ["😌 Calm", "😔 Sad", "😰 Anxious", "😠 Angry", "😊 Happy"];
 
   const sendMood = (mood) => {
-    setMessage(mood);
+  setMessage(mood);
+  setTimeout(() => {
+    document.querySelector('.chat-input').focus();
+  }, 50);
+
+  // Extract clean mood word and log it
+  const moodMap = {
+    "Calm": "Calm",
+    "Sad": "Sad",
+    "Anxious": "Anxious",
+    "Angry": "Angry",
+    "Happy": "Happy"
+  };
+
+  const matchedMood = Object.keys(moodMap).find(m => mood.includes(m));
+  if (matchedMood) {
+    fetch("http://localhost:8080/api/mood/log", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ mood: matchedMood })
+    }).catch(err => console.error("Mood log failed:", err));
+  }
+};
+
+  // Format date for sidebar
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) return "Today";
+    if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
   };
 
   return (
@@ -94,37 +226,18 @@ function Chat() {
 
       {/* Sidebar */}
       <div className="sidebar">
+
+        {/* Logo */}
         <div className="sidebar-logo">
           <div className="logo-circle-leaf">
             <svg viewBox="0 0 100 120" width="65" height="75">
               <path
-                d="M50 5
-                   C55 5, 63 10, 70 18
-                   C76 25, 80 30, 82 38
-                   C85 48, 83 57, 79 64
-                   C75 71, 68 77, 62 82
-                   C57 86, 53 89, 50 90
-                   C47 89, 43 86, 38 82
-                   C32 77, 25 71, 21 64
-                   C17 57, 15 48, 18 38
-                   C20 30, 24 25, 30 18
-                   C37 10, 45 5, 50 5 Z"
-                fill="url(#leafGrad)"
-                stroke="#3a9a2a"
-                strokeWidth="1"
+                d="M50 5 C55 5, 63 10, 70 18 C76 25, 80 30, 82 38 C85 48, 83 57, 79 64 C75 71, 68 77, 62 82 C57 86, 53 89, 50 90 C47 89, 43 86, 38 82 C32 77, 25 71, 21 64 C17 57, 15 48, 18 38 C20 30, 24 25, 30 18 C37 10, 45 5, 50 5 Z"
+                fill="url(#leafGrad)" stroke="#3a9a2a" strokeWidth="1"
               />
-              <path
-                d="M30 18 C27 22, 24 26, 22 32 C20 36, 19 40, 18 38"
-                fill="#5dc93a" stroke="none" opacity="0.4"
-              />
-              <path
-                d="M21 52 C19 55, 17 58, 17 57 C16 54, 16 51, 18 48"
-                fill="#5dc93a" stroke="none" opacity="0.3"
-              />
-              <path
-                d="M35 12 C30 20, 26 32, 27 48 C28 55, 30 60, 33 65 C28 58, 22 48, 22 38 C22 28, 27 18, 35 12 Z"
-                fill="#7de84a" opacity="0.5"
-              />
+              <path d="M30 18 C27 22, 24 26, 22 32 C20 36, 19 40, 18 38" fill="#5dc93a" stroke="none" opacity="0.4"/>
+              <path d="M21 52 C19 55, 17 58, 17 57 C16 54, 16 51, 18 48" fill="#5dc93a" stroke="none" opacity="0.3"/>
+              <path d="M35 12 C30 20, 26 32, 27 48 C28 55, 30 60, 33 65 C28 58, 22 48, 22 38 C22 28, 27 18, 35 12 Z" fill="#7de84a" opacity="0.5"/>
               <path d="M50 8 C50 25, 50 55, 50 88" fill="none" stroke="#2d7a1e" strokeWidth="2" strokeLinecap="round"/>
               <path d="M49 22 C44 25, 37 27, 28 29" fill="none" stroke="#2d7a1e" strokeWidth="1.1" strokeLinecap="round"/>
               <path d="M49 32 C43 35, 36 37, 26 39" fill="none" stroke="#2d7a1e" strokeWidth="1.1" strokeLinecap="round"/>
@@ -144,10 +257,7 @@ function Chat() {
               <path d="M60 28 C63 31, 66 34, 68 37" fill="none" stroke="#2d7a1e" strokeWidth="0.6" strokeLinecap="round" opacity="0.7"/>
               <path d="M62 38 C65 41, 67 44, 70 46" fill="none" stroke="#2d7a1e" strokeWidth="0.6" strokeLinecap="round" opacity="0.7"/>
               <path d="M62 48 C65 51, 67 53, 70 55" fill="none" stroke="#2d7a1e" strokeWidth="0.6" strokeLinecap="round" opacity="0.7"/>
-              <path
-                d="M50 88 C50 92, 48 97, 45 103 C43 107, 41 110, 40 113"
-                fill="none" stroke="#2d7a1e" strokeWidth="2.5" strokeLinecap="round"
-              />
+              <path d="M50 88 C50 92, 48 97, 45 103 C43 107, 41 110, 40 113" fill="none" stroke="#2d7a1e" strokeWidth="2.5" strokeLinecap="round"/>
               <defs>
                 <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#8fe840"/>
@@ -163,11 +273,44 @@ function Chat() {
           </div>
         </div>
 
-        {/* Welcome user */}
-        <div className="user-greeting">
-          <span>👋 Hello, {name}!</span>
-        </div>
+        {/* New Chat Button */}
+        <button className="new-chat-btn" onClick={newChat}>
+          + New Chat
+        </button>
 
+        {/* Past Conversations */}
+        {sessions.length > 0 && (
+          <div className="sidebar-section">
+            <div className="sessions-header">
+              <p className="sidebar-label">Past Conversations</p>
+              <button className="clear-all-btn" onClick={deleteAllSessions}>
+                Clear all
+              </button>
+            </div>
+            <div className="sessions-list">
+              {sessions.map(session => (
+                <div
+                  key={session.id}
+                  className={`session-item ${activeSessionId === session.id ? "active" : ""}`}
+                  onClick={() => loadSession(session.id)}
+                >
+                  <div className="session-info">
+                    <p className="session-title">{session.title}</p>
+                    <p className="session-date">{formatDate(session.updatedAt)}</p>
+                  </div>
+                  <button
+                    className="delete-session-btn"
+                    onClick={(e) => deleteSession(e, session.id)}
+                  >
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mood Buttons */}
         <div className="sidebar-section">
           <p className="sidebar-label">How are you feeling?</p>
           <div className="mood-grid">
@@ -179,6 +322,7 @@ function Chat() {
           </div>
         </div>
 
+        {/* Quick Support */}
         <div className="sidebar-section">
           <p className="sidebar-label">Quick support</p>
           <button className="quick-btn" onClick={() => sendMood("I need help with breathing exercises")}>
@@ -195,6 +339,7 @@ function Chat() {
           </button>
         </div>
 
+        {/* Crisis Box */}
         <div className="crisis-box">
           <p className="crisis-title">🆘 Need urgent help?</p>
           <p className="crisis-text">Tele-MANAS (Govt) — 24/7 Free</p>
@@ -287,15 +432,17 @@ function Chat() {
 }
 
 function App() {
+  const [token, setToken] = React.useState(localStorage.getItem("token"));
+
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<Login setToken={setToken} />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/chat" element={
-          localStorage.getItem("token") ? <Chat /> : <Navigate to="/login" />
-        } />
+        <Route path="/chat" element={token ? <Chat /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/login" />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
     </Router>
   );
