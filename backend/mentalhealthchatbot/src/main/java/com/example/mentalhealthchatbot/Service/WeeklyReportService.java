@@ -28,7 +28,8 @@ public class WeeklyReportService {
     private GeminiService geminiService;
 
     
-   @Scheduled(cron = "0 0 9 * * SUN")
+  @Scheduled(cron = "0 0 7 * * SUN")
+   
     public void sendWeeklyReports() {
         List<User> allUsers = userRepository.findAll();
 
@@ -45,7 +46,14 @@ public class WeeklyReportService {
         .findByUserIdAndTimestampAfter(user.getEmail(), oneMonthAgo);
 
     if (!previousEntries.isEmpty()) {
-        // User has history but went silent this week
+        // User has history but went silent 
+         LocalDateTime lastMoodEntry = previousEntries.stream()
+            .map(MoodEntry::getTimestamp)
+            .max(LocalDateTime::compareTo)
+            .orElse(null);
+
+    if (user.getLastMissedYouEmailSent() == null ||
+            user.getLastMissedYouEmailSent().isBefore(lastMoodEntry)) {
         String missedPrompt = "You are Sera, a warm and compassionate AI wellness companion. " +
             "Write a short, gentle email to " + user.getName() + " who hasn't checked in this week. " +
             "Don't make them feel guilty. " +
@@ -55,9 +63,13 @@ public class WeeklyReportService {
             "End with something warm and hopeful that makes them smile. " +
             "Under 100 words. No subject line. No sign off.";
 
+
         String missedBody = geminiService.getAIResponse(missedPrompt, new ArrayList<>());
         emailService.sendWeeklyReport(user.getEmail(), user.getName(), missedBody);
+         user.setLastMissedYouEmailSent(LocalDateTime.now());
+         userRepository.save(user);
     }
+}
     continue;
 }
 
