@@ -208,6 +208,21 @@ function Chat() {
     }).catch(err => console.error("Mood log failed:", err));
   }
 };
+const sendQuickSupport = (message, mood) => {
+  setMessage(message);
+  setTimeout(() => {
+    document.querySelector('.chat-input').focus();
+  }, 50);
+
+  fetch("http://localhost:8080/api/mood/log", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ mood: mood })
+  }).catch(err => console.error("Mood log failed:", err));
+};
 
   // Format date for sidebar
   const formatDate = (dateStr) => {
@@ -322,22 +337,22 @@ function Chat() {
           </div>
         </div>
 
-        {/* Quick Support */}
-        <div className="sidebar-section">
-          <p className="sidebar-label">Quick support</p>
-          <button className="quick-btn" onClick={() => sendMood("I need help with breathing exercises")}>
-            🌬️ Breathing exercise
-          </button>
-          <button className="quick-btn" onClick={() => sendMood("I need some motivation right now")}>
-            ✨ Get motivated
-          </button>
-          <button className="quick-btn" onClick={() => sendMood("I'm having trouble sleeping")}>
-            🌙 Sleep tips
-          </button>
-          <button className="quick-btn" onClick={() => sendMood("I need help managing stress")}>
-            🧘 Manage stress
-          </button>
-        </div>
+      {/* Quick Support */}
+<div className="sidebar-section">
+  <p className="sidebar-label">Quick support</p>
+  <button className="quick-btn" onClick={() => sendQuickSupport("I need help with breathing exercises", "Anxious")}>
+    🌬️ Breathing exercise
+  </button>
+  <button className="quick-btn" onClick={() => sendQuickSupport("I need some motivation right now", "Sad")}>
+    ✨ Get motivated
+  </button>
+  <button className="quick-btn" onClick={() => sendQuickSupport("I'm having trouble sleeping", "Anxious")}>
+    🌙 Sleep tips
+  </button>
+  <button className="quick-btn" onClick={() => sendQuickSupport("I need help managing stress", "Stressed")}>
+    🧘 Manage stress
+  </button>
+</div>
 
         {/* Crisis Box */}
         <div className="crisis-box">
