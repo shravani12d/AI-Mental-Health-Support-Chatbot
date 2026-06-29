@@ -14,7 +14,13 @@ function Login({ setToken }) {
       setError("Please fill in all fields");
       return;
     }
+ 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+if (!emailRegex.test(email)) {
+  setError("Please enter a valid email address");
+  return;
+}
     setLoading(true);
     setError("");
 
