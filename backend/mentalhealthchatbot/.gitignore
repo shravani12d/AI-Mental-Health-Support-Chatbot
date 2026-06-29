@@ -31,7 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
-backend/mentalhealthchatbot/src/main/resources/application.properties
+
 
 node_modules/
 .env
