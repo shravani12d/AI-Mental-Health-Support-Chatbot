@@ -45,7 +45,6 @@ if (!emailRegex.test(email)) {
       setToken(data.token);
       navigate("/chat");
 
-      navigate("/chat");
     } catch (err) {
       setError("Cannot connect to server. Please try again.");
     }
