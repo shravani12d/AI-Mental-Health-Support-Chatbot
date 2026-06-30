@@ -25,6 +25,7 @@ function Chat() {
   }, [messages, isTyping]);
 
   // Load all sessions on startup
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     loadSessions();
   }, []);
