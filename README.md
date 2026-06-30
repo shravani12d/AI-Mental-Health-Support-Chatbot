@@ -11,6 +11,11 @@ Sera is an empathetic AI-powered mental wellness chatbot designed to provide emo
 - 💌 **Re-engagement Emails** — Users who go silent for a week receive a gentle "we missed you" message
 - 🆘 **Crisis Support** — Built-in helpline numbers (Tele-MANAS 14416, iCALL 9152987821) surface automatically in crisis situations
 - 💾 **Conversation History** — Past chat sessions are saved and accessible from the sidebar
+  
+
+🔗 Live Demo https://ai-mental-health-support-chatbot.vercel.app
+
+Note: This is hosted on a free-tier backend, so the first message may take 30-50 seconds to respond while the server wakes up.
 
 ## Tech Stack
 
@@ -20,7 +25,7 @@ Sera is an empathetic AI-powered mental wellness chatbot designed to provide emo
 | Backend | Spring Boot, Java 17 |
 | Database | MongoDB |
 | AI | Google Gemini API |
-| Email | JavaMailSender, Gmail SMTP |
+| Email | SendGrid |
 | Auth | JWT |
 
 ## Project Structure
@@ -42,27 +47,28 @@ Sera is an empathetic AI-powered mental wellness chatbot designed to provide emo
 ### Prerequisites
 - Java 17
 - Node.js
-- MongoDB running locally on port 27017
+- MongoDB Atlas account (cloud-hosted)
 - Google Gemini API key
-- Gmail account with App Password enabled
+- SendGrid account with verified sender
 
 ### Environment Variables
-Set these in your system environment variables:
+
+Backend (set in Render dashboard):
+MONGO_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_jwt_secret
 GEMINI_API_KEY=your_gemini_api_key
-MAIL_PASSWORD=your_gmail_app_password
+SENDGRID_API_KEY=your_sendgrid_api_key
+FRONTEND_URL=your_deployed_frontend_url
 
-### Backend
-```bash
-cd backend/mentalhealthchatbot
-./mvnw spring-boot:run
-```
+Frontend (set in Vercel dashboard):
+REACT_APP_API_URL=your_deployed_backend_url
 
-### Frontend
-```bash
-cd frontend
-npm install
-npm start
-```
+
+Deployment
+This project is deployed using:
+- Frontend: Vercel
+- Backend: Render (Docker)
+- Database: MongoDB Atlas
 
 ## Privacy
 Sera stores conversation history per session so you can revisit past chats. Only mood labels and timestamps are analyzed for weekly reports — never the actual conversation content.
