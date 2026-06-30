@@ -6,6 +6,7 @@ import Login from "./Login";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
+import { API_URL } from "./config";
 
 
 function Chat() {
@@ -30,7 +31,7 @@ function Chat() {
 
   const loadSessions = async () => {
     try {
-      const res = await fetch("http://localhost:8080/api/sessions", {
+      const res = await fetch(`${API_URL}/api/sessions`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -69,7 +70,7 @@ function Chat() {
   // Load a specific session when clicked
   const loadSession = async (sessionId) => {
     try {
-      const res = await fetch(`http://localhost:8080/api/sessions/${sessionId}`, {
+      const res = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
@@ -98,7 +99,7 @@ function Chat() {
   // Delete one session
   const deleteSession = async (e, sessionId) => {
     e.stopPropagation();
-    await fetch(`http://localhost:8080/api/sessions/${sessionId}`, {
+    await fetch(`${API_URL}/api/sessions/${sessionId}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });
@@ -112,7 +113,7 @@ function Chat() {
 
   // Delete all sessions
   const deleteAllSessions = async () => {
-    await fetch("http://localhost:8080/api/sessions", {
+    await fetch(`${API_URL}/api/sessions`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
     });
@@ -130,8 +131,8 @@ function Chat() {
 
     try {
       const url = activeSessionId
-        ? `http://localhost:8080/api/chat?sessionId=${activeSessionId}`
-        : "http://localhost:8080/api/chat";
+        ? `${API_URL}/api/chat?sessionId=${activeSessionId}`
+        : `${API_URL}/api/chat`;
 
       const response = await fetch(url, {
         method: "POST",
@@ -198,7 +199,7 @@ function Chat() {
 
   const matchedMood = Object.keys(moodMap).find(m => mood.includes(m));
   if (matchedMood) {
-    fetch("http://localhost:8080/api/mood/log", {
+    fetch(`${API_URL}/api/mood/log`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -214,7 +215,7 @@ const sendQuickSupport = (message, mood) => {
     document.querySelector('.chat-input').focus();
   }, 50);
 
-  fetch("http://localhost:8080/api/mood/log", {
+  fetch(`${API_URL}/api/mood/log`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
