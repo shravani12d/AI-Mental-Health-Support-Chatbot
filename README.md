@@ -16,6 +16,7 @@ Sera is an empathetic AI-powered mental wellness chatbot designed to provide emo
 🔗 Live Demo https://ai-mental-health-support-chatbot.vercel.app
 
 Note: This is hosted on a free-tier backend, so the first message may take 30-50 seconds to respond while the server wakes up.
+Note: Emails may land in spam due to sender authentication limitations on the free-tier email setup — check your spam folder if you don't see the check-in email in your inbox.
 
 ## Tech Stack
 
@@ -59,6 +60,7 @@ JWT_SECRET=your_jwt_secret
 GEMINI_API_KEY=your_gemini_api_key
 SENDGRID_API_KEY=your_sendgrid_api_key
 FRONTEND_URL=your_deployed_frontend_url
+ADMIN_TRIGGER_SECRET=your_admin_trigger_secret
 
 Frontend (set in Vercel dashboard):
 REACT_APP_API_URL=your_deployed_backend_url
@@ -69,6 +71,7 @@ This project is deployed using:
 - Frontend: Vercel
 - Backend: Render (Docker)
 - Database: MongoDB Atlas
+- Note: Weekly email delivery is triggered via an external scheduler (cron-job.org) calling a secured admin endpoint, since Render's free tier does not reliably run internal background schedulers unattended.
 
 ## Privacy
 Sera stores conversation history per session so you can revisit past chats. Only mood labels and timestamps are analyzed for weekly reports — never the actual conversation content.
