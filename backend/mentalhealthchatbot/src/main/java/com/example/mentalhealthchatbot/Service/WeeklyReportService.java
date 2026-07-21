@@ -27,8 +27,7 @@ public class WeeklyReportService {
     @Autowired
     private GeminiService geminiService;
 
-    
- @Scheduled(cron = "0 40 13 * * *")
+    @Scheduled(cron = "0 5 14 * * *")
    
     public void sendWeeklyReports() {
         List<User> allUsers = userRepository.findAll();
