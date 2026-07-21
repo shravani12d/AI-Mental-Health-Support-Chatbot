@@ -28,7 +28,7 @@ public class WeeklyReportService {
     private GeminiService geminiService;
 
     
-  @Scheduled(cron = "0 10 13 * * *")
+ @Scheduled(cron = "0 40 13 * * *")
    
     public void sendWeeklyReports() {
         List<User> allUsers = userRepository.findAll();
